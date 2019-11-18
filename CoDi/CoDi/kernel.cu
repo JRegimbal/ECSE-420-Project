@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <random>
+#include <cmath>
 
 #ifndef __CUDACC_RTC__
 #define __CUDACC_RTC__
@@ -50,7 +51,7 @@ Step 3: take ownership of cell(s) to grow into using the locks
 Step 4: grow
 Step 5: mark this cell as having grown and move on to next cell
 */
-__global__ void growKernel(Cell * grid, unsigned int x, unsigned int y, unsigned int z, unsigned int iterations) {
+__global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned int z, unsigned int iterations) {
 	extern __shared__  unsigned int sharedMemory[];
 	unsigned int* locks = sharedMemory;
 	// We need to initialize locks to zero
@@ -87,45 +88,31 @@ __global__ void growKernel(Cell * grid, unsigned int x, unsigned int y, unsigned
 				Direction growthDirection = (type == CellType::AXON) ? grid[index].getGate() : Cell::oppositeDirection(grid[index].getGate());
 				Instruction instruction = grid[index].getInstruction();
 
-				switch (instruction) {
-				case Instruction::GROW_STRAIGHT:
-					switch (growthDirection) {
-					case Direction::NORTH:
-						if (yCoord > 0 && grid[index - x].getType() == CellType::BLANK) {
-							if (lock(&(locks[xCoord + x * (yCoord - 1)]))) {
-								grid[index - x].growCell(type, growthDirection);
-							}
-						}
-						break;
-					case Direction::SOUTH:
-						if (yCoord < y - 1 && grid[index + x].getType() == CellType::BLANK) {
-							if (lock(&locks[xCoord + x * (yCoord + 1)])) {
-								grid[index + x].growCell(type, growthDirection);
-							}
-						}
-						break;
-					case Direction::EAST:
-						break;
-					case Direction::WEST:
-						break;
-					default: // ERROR
-					}
-					break;
-
-				case Instruction::TURN_LEFT:
-					break;
-				case Instruction::TURN_RIGHT:
-					break;
-				case Instruction::SPLIT_LEFT:
-					break;
-				case Instruction::SPLIT_RIGHT:
-					break;
-				case Instruction::STOP:
-					break;
-				default:
-					// ERROR
+				// Determine directions to grow into
+				unsigned char growthMask = Direction::NONE;
+				if ((instruction & (Instruction::GROW_STRAIGHT | Instruction::SPLIT_LEFT | Instruction::SPLIT_RIGHT)) != 0) {
+					growthMask |= growthDirection;
+				}
+				if ((instruction & (Instruction::SPLIT_LEFT | Instruction::TURN_LEFT)) != 0) {
+					growthMask |= Cell::rotate(growthDirection, false);
+				}
+				if ((instruction & (Instruction::SPLIT_RIGHT | Instruction::TURN_RIGHT)) != 0) {
+					growthMask |= Cell::rotate(growthDirection, true);
 				}
 
+				// Grow into selected direction(s)
+				if ((growthMask & Direction::NORTH) != 0) {
+
+				}
+				if ((growthMask & Direction::EAST) != 0) {
+
+				}
+				if ((growthMask & Direction::SOUTH) != 0) {
+
+				}
+				if ((growthMask & Direction::WEST) != 0) {
+
+				}
 			}
 			grid[index].setGrown();
 		}
@@ -180,10 +167,10 @@ int main(int argc, char** argv) {
 		bool neuron = (rd() % sig) < (unsigned int)(neuronSeedP * sig);
 		// These lines initialize Cell objects continuouslyl in memory (so we can actually memcpy them)
 		if ((rd() % sig) < (unsigned int)(neuronSeedP * sig)) {
-			new (&(cells[i])) Cell(CellType::NEURON, (Instruction) chromosome[i], Direction::NORTH);
+			new (&(cells[i])) Cell(CellType::NEURON, (Instruction)(char) pow(2, chromosome[i]), Direction::NORTH);
 		}
 		else {
-			new (&(cells[i])) Cell((Instruction) chromosome[i]);
+			new (&(cells[i])) Cell((Instruction)(char) pow(2, chromosome[i]));
 		}
 	}
 

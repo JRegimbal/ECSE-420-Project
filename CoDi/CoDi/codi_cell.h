@@ -10,22 +10,22 @@ enum CellType {
 
 enum Direction {
 	NONE=0,
-	NORTH,
-	EAST,
-	SOUTH,
-	WEST,
-	UP,
-	DOWN,
+	NORTH = 1,
+	EAST = 2,
+	SOUTH = 4,
+	WEST = 8,
+	UP = 16,
+	DOWN = 32,
 	D_INVALID
 };
 
 enum Instruction {
 	STOP=0,
-	GROW_STRAIGHT,
-	TURN_LEFT,
-	TURN_RIGHT,
-	SPLIT_LEFT,
-	SPLIT_RIGHT,
+	GROW_STRAIGHT = 1,
+	TURN_LEFT = 2,
+	TURN_RIGHT = 4,
+	SPLIT_LEFT = 8,
+	SPLIT_RIGHT = 16,
 	I_INVALID
 };
 
@@ -42,6 +42,20 @@ public:
 	Cell(Instruction inst) : type(CellType::BLANK), chromosome(inst), gate(Direction::D_INVALID) {}
 	Cell(CellType type, Instruction inst, Direction gate) : type(type), chromosome(inst), gate(gate) {}
 
+	__device__ static Direction rotate(Direction dir, bool cw) {
+		switch (dir) {
+		case Direction::NORTH:
+			return cw ? Direction::EAST : Direction::WEST;
+		case Direction::EAST:
+			return cw ? Direction::SOUTH : Direction::NORTH;
+		case Direction::SOUTH:
+			return cw ? Direction::WEST : Direction::EAST;
+		case Direction::WEST:
+			return cw ? Direction::NORTH : Direction::SOUTH;
+		default:
+			return Direction::D_INVALID;
+		}
+	}
 	__device__ static Direction oppositeDirection(Direction dir) {
 		switch (dir) {
 		case Direction::NORTH:
