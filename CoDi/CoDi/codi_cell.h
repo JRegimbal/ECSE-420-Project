@@ -42,7 +42,7 @@ public:
 	Cell(Instruction inst) : type(CellType::BLANK), chromosome(inst), gate(Direction::D_INVALID) {}
 	Cell(CellType type, Instruction inst, Direction gate) : type(type), chromosome(inst), gate(gate) {}
 
-	static Direction oppositeDirection(Direction dir) {
+	__device__ static Direction oppositeDirection(Direction dir) {
 		switch (dir) {
 		case Direction::NORTH:
 			return Direction::SOUTH;
@@ -61,9 +61,14 @@ public:
 		}
 	}
 
-	Instruction getInstruction() { return this->chromosome; }
+	__device__ CellType getType() { return this->type; }
+	__device__ Direction getGate() { return this->gate; }
+	__device__ bool hasGrown() { return this->grown; }
+	__device__ void setGrown() { this->grown = true; }
 
-	void growCell(CellType type, Direction growthDirection) {
+	__device__ Instruction getInstruction() { return this->chromosome; }
+
+	__device__ void growCell(CellType type, Direction growthDirection) {
 		if (this->type != CellType::BLANK) return; // Only blank cells can grow into new cells!
 		// Initialize based on CellType
 		switch (type) {

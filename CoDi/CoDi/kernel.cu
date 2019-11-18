@@ -9,10 +9,86 @@
 #include <fstream>
 #include <random>
 
+#ifndef __CUDACC_RTC__
+#define __CUDACC_RTC__
+#endif // !(__CUDACC_RTC__)
+
+#define MAX(a, b) (a > b ? a : b)
+
 using namespace std;
 
 const float neuronSeedP = 0.10;
 const unsigned int sig = 100;
+const int threads = 20;
+
+/*
+We want x and y to be closer in memory than z because of locality.
+Access grid (i, j, k) at index (i + x * j + x * y * k)
+In a grid of dimensions x by y by z
+*/
+
+__device__ bool lock(unsigned int* loc) {
+	int old = atomicCAS(loc, 0, 1);
+	if (old == 0 && *loc == 1) {
+		return true;
+	}
+	return false;
+}
+
+__device__ void unlock(unsigned int* loc) {
+	if (*loc == 1) {
+		atomicCAS(loc, 1, 0);
+	}
+}
+
+/*
+We need to use barriers for some control and semaphores to avoid write conflicts
+Currently this assumes each x-y slice has exactly one block assigned to it.
+Step 1: determine which cells each thread is responsible for
+Step 2: if the cell is initialized and hasn't grown, follow growth for it. otherwise continue to next cell.
+Step 3: take ownership of cell(s) to grow into using the locks
+Step 4: grow
+Step 5: mark this cell as having grown and move on to next cell
+*/
+__global__ void growKernel(Cell * grid, unsigned int x, unsigned int y, unsigned int z, unsigned int iterations) {
+	extern __shared__  unsigned int sharedMemory[];
+	unsigned int* locks = sharedMemory;
+	// We need to initialize locks to zero
+	for (int i = threadIdx.x; i < x * y; i += blockDim.x) {
+		locks[i] = 0;
+	}
+	__syncthreads();
+	// Now we can start the actual growth
+	const unsigned int lower = x * y * blockIdx.x; // (0, 0, blockIdx.x)
+	const unsigned int higher = x - 1 + x * (y - 1) + x * y * blockIdx.x;
+	for (unsigned int count = 0; count < iterations; count++) {
+		for (unsigned int index = lower + threadIdx.x; index < higher; index += blockDim.x) {
+			if (grid[index].getType() == CellType::BLANK || grid[index].hasGrown())
+				continue;
+			int xCoord = (index - lower) % x;
+			int yCoord = (index - lower) / x;
+
+			if (grid[index].getType() == CellType::NEURON) {
+				Direction gate = grid[index].getGate();
+				bool axonOnX = (gate == Direction::EAST || gate == Direction::WEST);
+				// (Try to grow on (i-1, j)
+				if (xCoord > 0 && grid[index - 1].getType() == CellType::BLANK) {
+					// Attempt to lock
+					if (lock(&(locks[xCoord - 1 + x * yCoord]))) {
+						// Lock was successful
+						grid[index - 1].growCell(axonOnX ? CellType::AXON : CellType::DENDRITE, Direction::WEST);
+						unlock(&(locks[xCoord - 1 + x * yCoord]));
+					}
+				}
+				// Repeat for other 3 directions
+			}
+			else {
+
+			}
+		}
+		__syncthreads();
+	}
+}
 
 void generateRandomNumbers(size_t num, unsigned int* values) {
 	random_device rd;
