@@ -5,7 +5,7 @@ enum CellType {
 	NEURON,
 	AXON,
 	DENDRITE,
-	INVALID
+	CT_INVALID
 };
 
 enum Direction {
@@ -16,7 +16,7 @@ enum Direction {
 	WEST,
 	UP,
 	DOWN,
-	INVALID
+	D_INVALID
 };
 
 enum Instruction {
@@ -26,7 +26,7 @@ enum Instruction {
 	TURN_RIGHT,
 	SPLIT_LEFT,
 	SPLIT_RIGHT,
-	INVALID
+	I_INVALID
 };
 
 class Cell {
@@ -38,8 +38,8 @@ protected:
 	bool grown = false;	// If this cell has followed the growth instruction. This must only happen once.
 
 public:
-	Cell() : type(CellType::BLANK), chromosome(Instruction::INVALID), gate(Direction::INVALID) {}
-	Cell(Instruction inst) : type(CellType::BLANK), chromosome(inst), gate(Direction::INVALID) {}
+	Cell() : type(CellType::BLANK), chromosome(Instruction::I_INVALID), gate(Direction::D_INVALID) {}
+	Cell(Instruction inst) : type(CellType::BLANK), chromosome(inst), gate(Direction::D_INVALID) {}
 	Cell(CellType type, Instruction inst, Direction gate) : type(type), chromosome(inst), gate(gate) {}
 
 	static Direction oppositeDirection(Direction dir) {
@@ -57,7 +57,7 @@ public:
 		case Direction::DOWN:
 			return Direction::UP;
 		default:
-			return Direction::INVALID;
+			return Direction::D_INVALID;
 		}
 	}
 
@@ -80,8 +80,8 @@ public:
 		case CellType::NEURON:
 			// THIS SHOULD NOT HAPPEN. NEURONS USE A SPECIFIC FUNCTION TO GROW.
 		default:
-			this->type = CellType::INVALID;
-			this->gate = Direction::INVALID;
+			this->type = CellType::CT_INVALID;
+			this->gate = Direction::D_INVALID;
 			break;
 		}
 	}
