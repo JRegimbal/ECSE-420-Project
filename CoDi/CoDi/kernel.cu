@@ -53,18 +53,30 @@ int main(int argc, char** argv) {
 	}
 	
 	Cell* cells = (Cell *)malloc(x * y * z * sizeof(Cell));
+	Cell* device_cells = NULL;
 	random_device rd;
 	// Initialize cells.
 	for (unsigned int i = 0; i < x * y * z; i++) {
 		// Will this be a neuron?
 		bool neuron = (rd() % sig) < (unsigned int)(neuronSeedP * sig);
+		// These lines initialize Cell objects continuouslyl in memory (so we can actually memcpy them)
 		if ((rd() % sig) < (unsigned int)(neuronSeedP * sig)) {
 			new (&(cells[i])) Cell(CellType::NEURON, (Instruction) chromosome[i], Direction::NORTH);
 		}
 		else {
-			new (&(cells[i])) Cell((Instruction)chromosome[i]);
+			new (&(cells[i])) Cell((Instruction) chromosome[i]);
 		}
 	}
+
+	// Allocate cuda cell space
+	cudaMalloc((void**)& device_cells, x * y * z * sizeof(Cell));
+	// Copy initialized grid to device
+	cudaMemcpy(device_cells, cells, x * y * z * sizeof(Cell), cudaMemcpyHostToDevice);
+
+	// Growth Stuff
+
+	cudaFree(device_cells);
+	free(cells);
 
 	return 0;
 }
