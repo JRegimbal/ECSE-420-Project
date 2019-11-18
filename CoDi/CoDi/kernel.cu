@@ -3,12 +3,16 @@
 #include "device_launch_parameters.h"
 
 #include "codi_cell.h"
+#include "chromosome.h"
 
 #include <iostream>
 #include <fstream>
 #include <random>
 
 using namespace std;
+
+const float neuronSeedP = 0.10;
+const unsigned int sig = 100;
 
 void generateRandomNumbers(size_t num, unsigned int* values) {
 	random_device rd;
@@ -47,9 +51,20 @@ int main(int argc, char** argv) {
 		cerr << "Unsupported number of arguments (" << argc - 1 << ")" << endl;
 		return 1;
 	}
-	unsigned int* values = new unsigned int[x * y * z];
-	generateRandomNumbers(x * y * z, values);
-	writeChromosome(x, x * y * z, values);
+	
+	Cell* cells = (Cell *)malloc(x * y * z * sizeof(Cell));
+	random_device rd;
+	// Initialize cells.
+	for (unsigned int i = 0; i < x * y * z; i++) {
+		// Will this be a neuron?
+		bool neuron = (rd() % sig) < (unsigned int)(neuronSeedP * sig);
+		if ((rd() % sig) < (unsigned int)(neuronSeedP * sig)) {
+			new (&(cells[i])) Cell(CellType::NEURON, (Instruction) chromosome[i], Direction::NORTH);
+		}
+		else {
+			new (&(cells[i])) Cell((Instruction)chromosome[i]);
+		}
+	}
 
 	return 0;
 }
