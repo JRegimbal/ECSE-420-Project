@@ -73,7 +73,7 @@ __global__ void growKernel(Cell * grid, unsigned int x, unsigned int y, unsigned
 				bool axonOnX = (gate == Direction::EAST || gate == Direction::WEST);
 				// (Try to grow on (i-1, j)
 				if (xCoord > 0 && grid[index - 1].getType() == CellType::BLANK) {
-					// Attempt to lock
+					// Attempt to lock (if lock fails then another thread is writing to it)
 					if (lock(&(locks[xCoord - 1 + x * yCoord]))) {
 						// Lock was successful
 						grid[index - 1].growCell(axonOnX ? CellType::AXON : CellType::DENDRITE, Direction::WEST);
@@ -83,8 +83,51 @@ __global__ void growKernel(Cell * grid, unsigned int x, unsigned int y, unsigned
 				// Repeat for other 3 directions
 			}
 			else {
+				CellType type = grid[index].getType();
+				Direction growthDirection = (type == CellType::AXON) ? grid[index].getGate() : Cell::oppositeDirection(grid[index].getGate());
+				Instruction instruction = grid[index].getInstruction();
+
+				switch (instruction) {
+				case Instruction::GROW_STRAIGHT:
+					switch (growthDirection) {
+					case Direction::NORTH:
+						if (yCoord > 0 && grid[index - x].getType() == CellType::BLANK) {
+							if (lock(&(locks[xCoord + x * (yCoord - 1)]))) {
+								grid[index - x].growCell(type, growthDirection);
+							}
+						}
+						break;
+					case Direction::SOUTH:
+						if (yCoord < y - 1 && grid[index + x].getType() == CellType::BLANK) {
+							if (lock(&locks[xCoord + x * (yCoord + 1)])) {
+								grid[index + x].growCell(type, growthDirection);
+							}
+						}
+						break;
+					case Direction::EAST:
+						break;
+					case Direction::WEST:
+						break;
+					default: // ERROR
+					}
+					break;
+
+				case Instruction::TURN_LEFT:
+					break;
+				case Instruction::TURN_RIGHT:
+					break;
+				case Instruction::SPLIT_LEFT:
+					break;
+				case Instruction::SPLIT_RIGHT:
+					break;
+				case Instruction::STOP:
+					break;
+				default:
+					// ERROR
+				}
 
 			}
+			grid[index].setGrown();
 		}
 		__syncthreads();
 	}
