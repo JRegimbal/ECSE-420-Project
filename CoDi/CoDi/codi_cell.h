@@ -1,4 +1,5 @@
 #pragma once
+#include <stdio.h>
 
 enum CellType {
 	BLANK=0,
@@ -31,13 +32,14 @@ enum Instruction {
 
 class Cell {
 protected:
-	CellType type;
+	//CellType type;
 	Instruction chromosome;
 	Direction gate;
 	bool value = false;	// Value for signaling phase
 	bool grown = false;	// If this cell has followed the growth instruction. This must only happen once.
 
 public:
+	CellType type;
 	Cell() : type(CellType::BLANK), chromosome(Instruction::I_INVALID), gate(Direction::D_INVALID) {}
 	Cell(Instruction inst) : type(CellType::BLANK), chromosome(inst), gate(Direction::D_INVALID) {}
 	Cell(CellType type, Instruction inst, Direction gate) : type(type), chromosome(inst), gate(gate) {}
@@ -83,20 +85,26 @@ public:
 	__device__ Instruction getInstruction() { return this->chromosome; }
 
 	__device__ void growCell(CellType type, Direction growthDirection) {
-		if (this->type != CellType::BLANK) return; // Only blank cells can grow into new cells!
+		if (this->type != CellType::BLANK) {
+			//printf("Tried to grow onto not blank cell\n");
+			return; // Only blank cells can grow into new cells!
+		}
 		// Initialize based on CellType
 		switch (type) {
 		case CellType::AXON:
 			// Gate is in direction of growth
+			//printf("Growing Axon\n");
 			this->type = type;
 			this->gate = growthDirection;
 			break;
 		case CellType::DENDRITE:
 			// Gate points toward the signaling cell (i.e. opposite of growth direction)
+			//printf("Growing dendrite\n");
 			this->type = type;
 			this->gate = Cell::oppositeDirection(growthDirection);
 			break;
 		case CellType::NEURON:
+			//printf("ERROR: Neuron\n");
 			// THIS SHOULD NOT HAPPEN. NEURONS USE A SPECIFIC FUNCTION TO GROW.
 		default:
 			this->type = CellType::CT_INVALID;

@@ -4,6 +4,7 @@
 
 #include "codi_cell.h"
 #include "chromosome.h"
+#include <stdio.h>
 
 #include <iostream>
 #include <fstream>
@@ -53,8 +54,8 @@ Step 4: grow
 Step 5: mark this cell as having grown and move on to next cell
 */
 __global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned int z, unsigned int iterations) {
-	extern __shared__  unsigned int sharedMemory[];
-	unsigned int* locks = sharedMemory;
+	//extern __shared__  unsigned int sharedMemory[];
+	__shared__ unsigned int locks[1000];
 	// We need to initialize locks to zero
 	for (int i = threadIdx.x; i < x * y; i += blockDim.x) {
 		locks[i] = 0;
@@ -71,6 +72,9 @@ __global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned 
 			int yCoord = (index - lower) / x;
 
 			if (grid[index].getType() == CellType::NEURON) {
+				if (blockIdx.x == 0) {
+					printf("Neuron at (%d, %d)\n", xCoord, yCoord);
+				}
 				Direction gate = grid[index].getGate();
 				bool axonOnX = (gate == Direction::EAST || gate == Direction::WEST);
 				// (Try to grow on (i-1, j)
@@ -140,7 +144,7 @@ __global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned 
 					if (xCoord < x - 1 && grid[index + 1].getType() == CellType::BLANK) {
 						if (lock(&(locks[xCoord + 1 + x * yCoord]))) {
 							grid[index + 1].growCell(type, Direction::EAST);
-							unlock(&(locks[xCoord + x * (yCoord - 1)]));
+							unlock(&(locks[xCoord + 1 + x * yCoord]));
 						}
 					}
 				}
@@ -164,6 +168,18 @@ __global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned 
 			grid[index].setGrown();
 		}
 		__syncthreads();
+	}
+}
+
+__global__ void printKernel(Cell* cells, unsigned int x, unsigned int y, unsigned int z) {
+	for (int k = 0; k < z; k++) {
+		printf("Slice %d\n", k);
+		for (int i = 0; i < x; i++) {
+			for (int j = 0; j < y; j++) {
+				printf("%d ", (int)cells[i + x * j + x * y * k].getType());
+			}
+			printf("\n");
+		}
 	}
 }
 
@@ -236,10 +252,20 @@ int main(int argc, char** argv) {
 		100
 		);
 	cudaDeviceSynchronize();
+	printKernel << <1, 1 >> > (device_cells, x, y, z);
 	auto end_time = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(end_time - start_time).count();
 	cout << "Time: " << duration << endl;
-	cudaMemcpy(cells, &device_cells, x * y * z * sizeof(Cell), cudaMemcpyDeviceToHost);
+	cudaMemcpy(cells, device_cells, x * y * z * sizeof(Cell), cudaMemcpyDeviceToHost);
+	/*for (int k = 0; k < z; k++) {
+		cout << "Slice " << k << endl;
+		for (int i = 0; i < x; i++) {
+			for (int j = 0; j < y; j++) {
+				cout << cells[i + x * j + x * y * k].type << " ";
+			}
+			cout << endl;
+		}
+	}*/
 	cudaFree(device_cells);
 	free(cells);
 
