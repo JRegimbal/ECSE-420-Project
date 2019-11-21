@@ -81,7 +81,33 @@ __global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned 
 						unlock(&(locks[xCoord - 1 + x * yCoord]));
 					}
 				}
-				// Repeat for other 3 directions
+
+				// Try to grow on (i+1, j)
+				if (xCoord < x - 1 && grid[index + 1].getType() == CellType::BLANK) {
+					if (lock(&(locks[xCoord + 1 + x * yCoord]))) {
+						// Lock was successful
+						grid[index + 1].growCell(axonOnX ? CellType::AXON : CellType::DENDRITE, Direction::EAST);
+						unlock(&(locks[xCoord + 1 + x * yCoord]));
+					}
+				}
+
+				// Try to grow on (i, j-1)
+				if (yCoord > 0 && grid[index - x].getType() == CellType::BLANK) {
+					if (lock(&(locks[xCoord + x * (yCoord - 1)]))) {
+						// Lock was successful
+						grid[index - x].growCell(axonOnX ? CellType::DENDRITE : CellType::AXON, Direction::NORTH);
+						unlock(&(locks[xCoord + x * (yCoord - 1)]));
+					}
+				}
+
+				// Try to grow on (i, j + 1)
+				if (yCoord < y - 1 && grid[index + x].getType() == CellType::BLANK) {
+					if (lock(&(locks[xCoord + x * (yCoord + 1)]))) {
+						//Lock was successful
+						grid[index + x].growCell(axonOnX ? CellType::DENDRITE : CellType::AXON, Direction::SOUTH);
+						unlock(&(locks[xCoord + x * (yCoord + 1)]));
+					}
+				}
 			}
 			else {
 				CellType type = grid[index].getType();
@@ -102,16 +128,36 @@ __global__ void growKernel(Cell* grid, unsigned int x, unsigned int y, unsigned 
 
 				// Grow into selected direction(s)
 				if ((growthMask & Direction::NORTH) != 0) {
-
+					if (yCoord > 0 && grid[index - x].getType() == CellType::BLANK) {
+						if (lock(&(locks[xCoord + x * (yCoord - 1)]))) {
+							grid[index - x].growCell(type, Direction::NORTH);
+							unlock(&(locks[xCoord + x * (yCoord - 1)]));
+						}
+					}
 				}
 				if ((growthMask & Direction::EAST) != 0) {
-
+					if (xCoord < x - 1 && grid[index + 1].getType() == CellType::BLANK) {
+						if (lock(&(locks[xCoord + 1 + x * yCoord]))) {
+							grid[index + 1].growCell(type, Direction::EAST);
+							unlock(&(locks[xCoord + x * (yCoord - 1)]));
+						}
+					}
 				}
 				if ((growthMask & Direction::SOUTH) != 0) {
-
+					if (yCoord < y - 1 && grid[index + x].getType() == CellType::BLANK) {
+						if (lock(&(locks[xCoord + x * (yCoord + 1)]))) {
+							grid[index + x].growCell(type, Direction::SOUTH);
+							unlock(&(locks[xCoord + x * (yCoord + 1)]));
+						}
+					}
 				}
 				if ((growthMask & Direction::WEST) != 0) {
-
+					if (xCoord > 0 && grid[index - 1].getType() == CellType::BLANK) {
+						if (lock(&(locks[xCoord - 1 + x * yCoord]))) {
+							grid[index - 1].growCell(type, Direction::WEST);
+							unlock(&(locks[xCoord - 1 + x * yCoord]));
+						}
+					}
 				}
 			}
 			grid[index].setGrown();
@@ -157,7 +203,7 @@ int main(int argc, char** argv) {
 		cerr << "Unsupported number of arguments (" << argc - 1 << ")" << endl;
 		return 1;
 	}
-	
+
 	Cell* cells = (Cell *)malloc(x * y * z * sizeof(Cell));
 	Cell* device_cells = NULL;
 	random_device rd;
