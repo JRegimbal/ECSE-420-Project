@@ -9,6 +9,7 @@
 #include <fstream>
 #include <random>
 #include <cmath>
+#include <chrono>
 
 #ifndef __CUDACC_RTC__
 #define __CUDACC_RTC__
@@ -226,7 +227,19 @@ int main(int argc, char** argv) {
 	cudaMemcpy(device_cells, cells, x * y * z * sizeof(Cell), cudaMemcpyHostToDevice);
 
 	// Growth Stuff
-
+	auto start_time = chrono::high_resolution_clock::now();
+	growKernel <<<10, 10, x * y * sizeof(int) >>> (
+		device_cells,
+		x,
+		y,
+		z,
+		100
+		);
+	cudaDeviceSynchronize();
+	auto end_time = chrono::high_resolution_clock::now();
+	auto duration = chrono::duration_cast<chrono::microseconds>(end_time - start_time).count();
+	cout << "Time: " << duration << endl;
+	cudaMemcpy(cells, &device_cells, x * y * z * sizeof(Cell), cudaMemcpyDeviceToHost);
 	cudaFree(device_cells);
 	free(cells);
 
