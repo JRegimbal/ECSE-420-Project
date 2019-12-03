@@ -22,7 +22,7 @@ using namespace std;
 
 const float neuronSeedP = 0.10;
 const unsigned int sig = 100;
-const int threads = 20;
+const int threads = 1024;
 
 /*
 We want x and y to be closer in memory than z because of locality.
@@ -207,12 +207,12 @@ void writeChromosome(unsigned int block, unsigned int size, unsigned int * value
 }
 
 int main(int argc, char** argv) {
-	unsigned int* values = new unsigned int[100 * 100 * 100];
+	/*unsigned int* values = new unsigned int[100 * 100 * 100];
 	generateRandomNumbers(100 * 100 * 100, values);
 	writeChromosome(100, 100 * 100 * 100, values);
-	delete[] values;
+	delete[] values;*/
 	
-	/*size_t x, y, z;
+	size_t x, y, z;
 	if (argc == 2) {
 		x = y = z = atoi(argv[1]);
 	}
@@ -224,9 +224,9 @@ int main(int argc, char** argv) {
 	else {
 		cerr << "Unsupported number of arguments (" << argc - 1 << ")" << endl;
 		return 1;
-	}*/
+	}
 
-	/*Cell* cells = (Cell *)malloc(x * y * z * sizeof(Cell));
+	Cell* cells = (Cell *)malloc(x * y * z * sizeof(Cell));
 	Cell* device_cells = NULL;
 	random_device rd;
 	// Initialize cells.
@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
 
 	// Growth Stuff
 	auto start_time = chrono::high_resolution_clock::now();
-	growKernel <<<z, 64, x * y * sizeof(int) >>> (
+	growKernel <<<z, threads, x * y * sizeof(int) >>> (
 		device_cells,
 		x,
 		y,
@@ -262,7 +262,7 @@ int main(int argc, char** argv) {
 	auto duration = chrono::duration_cast<chrono::microseconds>(end_time - start_time).count();
 	cout << "Time: " << duration << endl;
 	cudaMemcpy(cells, device_cells, x * y * z * sizeof(Cell), cudaMemcpyDeviceToHost);
-	for (int k = 0; k < z; k++) {
+	/*for (int k = 0; k < z; k++) {
 		cout << "Slice " << k << endl;
 		for (int i = 0; i < x; i++) {
 			for (int j = 0; j < y; j++) {
@@ -270,9 +270,9 @@ int main(int argc, char** argv) {
 			}
 			cout << endl;
 		}
-	}
+	}*/
 	cudaFree(device_cells);
-	free(cells);*/
+	free(cells);
 
 	return 0;
 }
