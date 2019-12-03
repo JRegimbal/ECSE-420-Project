@@ -27,7 +27,7 @@ enum Instruction {
 	TURN_RIGHT = 4,
 	SPLIT_LEFT = 8,
 	SPLIT_RIGHT = 16,
-	I_INVALID
+	I_INVALID=6
 };
 
 class Cell {
