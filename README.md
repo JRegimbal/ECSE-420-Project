@@ -2,6 +2,8 @@
 
 This software uses CUDA Toolkit 10 and contains a Visual Studio project in the `CoDi` folder. An NVIDIA GPU like the ones used in the labs is required to run this software.
 
+This is available in a [GitHub repository.](https://github.com/JRegimbal/ECSE-420-Project)
+
 # Running
 
 The software takes one command line parmeter, which is the dimension of the grid. For example to use a 100 by 100 by 100 chromosome, the command line argument should be 100. The chromosome is included in the `chromosome.h` header file.
